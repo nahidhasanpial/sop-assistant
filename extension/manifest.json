@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "SOPIA",
+  "version": "1.0.0",
+  "description": "AI-powered SOP writing guide and checker for graduate school admissions",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:5173/*",
+    "https://*.google.com/*",
+    "https://*.commonapp.org/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://docs.google.com/*",
+        "https://*.commonapp.org/*"
+      ],
+      "js": ["content/content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
