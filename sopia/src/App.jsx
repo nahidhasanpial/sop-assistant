@@ -555,8 +555,13 @@ export default function App() {
     }
 
     const isPremiumUser = user?.isPremium;
-    if (!isPremiumUser && apiProvider !== 'none') {
-      alert("AI Generation is a Premium feature. Please use the Offline Generator or upgrade to Premium.");
+    if (!isPremiumUser) {
+      if (user.isGuest) {
+        setAuthModalTab('signup');
+        setShowAuthModal(true);
+      } else {
+        setShowBilling(true);
+      }
       return;
     }
 
