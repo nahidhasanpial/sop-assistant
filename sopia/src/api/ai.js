@@ -126,25 +126,49 @@ Format your output in clean Markdown with these exact headings:
 // ============================================================================
 function getOfflineSuggestions(sectionId, sectionTitle, text, university, professor, customQuery) {
   if (customQuery) {
-     let response = `### Local Offline Advisor response to: "${customQuery}"\n\n`;
+     let response = `### 📋 SOPIA AI Advisor Report\n\n`;
      const queryLower = customQuery.toLowerCase();
-     if (queryLower.includes("hook") || queryLower.includes("intro")) {
-        response += `For your introduction, ensure you:
+     
+     if (queryLower.includes("warnings and improvements requested:")) {
+        const warningsPart = customQuery.substring(queryLower.indexOf("warnings and improvements requested:"));
+        response += `Based on your draft, our **21-Point Judgement Engine** flags these recommendations:\n\n`;
+        
+        if (warningsPart.toLowerCase().includes("hook")) {
+           response += `🔹 **Fix Hook & Clichés (Quality 1)**: Avoid starting with passive sentences like *"I want to study"*. Instead, start immediately with a real-life challenge or spark moment. For example:\n*“My work in distributed computing was sparked when I designed a load balancer that collapsed under high thread-pool density...”*\n\n`;
+        }
+        if (warningsPart.toLowerCase().includes("goals")) {
+           response += `🔹 **Define Goal Trajectories (Quality 14)**: Ensure you explicitly mention both **short-term** and **long-term** career goals. E.g., *"My short-term goal is to work as an R&D engineer, which will ultimately support my long-term aspiration of..."*\n\n`;
+        }
+        if (warningsPart.toLowerCase().includes("fit") || warningsPart.toLowerCase().includes("professor")) {
+           response += `🔹 **Enhance University Fit (Quality 13)**: Mention specific curriculum courses or Dr. ${professor || '[Professor]'} and their active projects. Avoid general praises like *"your prestigious university"*.\n\n`;
+        }
+        if (warningsPart.toLowerCase().includes("clichés") || warningsPart.toLowerCase().includes("language")) {
+           response += `🔹 **Human Writing Tone (Quality 17)**: Remove AI cliché markers like *"delve"*, *"tapestry"*, *"beacon"*, and *"furthermore"*. Use simple, professional terms like *"Additionally"* or *"Therefore"*.\n\n`;
+        }
+        if (warningsPart.toLowerCase().includes("placeholders") || warningsPart.toLowerCase().includes("mistakes")) {
+           response += `🔹 **Placeholders Warning (Quality 21)**: You have brackets like \`[University Name]\` or \`[Professor Name]\` in your text. Please replace them with actual details to avoid instant rejection.\n\n`;
+        }
+        
+        response += `*Let me know if you would like me to rewrite any of these sections for you!*`;
+     } else {
+        if (queryLower.includes("hook") || queryLower.includes("intro")) {
+           response += `For your introduction, ensure you:
 - Start with an active technical verb or a real-life challenge instead of clichés.
 - Example: *'My research in distributed systems began when I had to optimize a 4-node database partition...'*`;
-     } else if (queryLower.includes("flow") || queryLower.includes("transition")) {
-        response += `To improve flow and transition:
+        } else if (queryLower.includes("flow") || queryLower.includes("transition")) {
+           response += `To improve flow and transition:
 - Use analytical transition words like *'Consequently'*, *'Specifically'*, *'Additionally'*, and *'Indeed'*.
 - Avoid conversational ones like *'Furthermore'*, *'Besides'*, or *'So'* (and keep AI likelihood low by avoiding *'moreover'*).`;
-     } else if (queryLower.includes("goal")) {
-        response += `For goals:
+        } else if (queryLower.includes("goal")) {
+           response += `For goals:
 - Define short-term employment targets (e.g. R&D engineer).
 - Define long-term trajectory targets (e.g. group lead or principal investigator).`;
-     } else {
-        response += `Here are some quick pointers to improve this segment:
+        } else {
+           response += `Here are some quick pointers to improve your SOP:
 1. Add specific tool names (e.g. PyTorch, Kubernetes) to ground your projects.
 2. Clearly mention what *you* did (use 'I engineered' instead of 'Our team developed').
 3. Keep sentences concise (aim for under 25 words per sentence for flow).`;
+        }
      }
      return { success: true, feedback: response };
   }

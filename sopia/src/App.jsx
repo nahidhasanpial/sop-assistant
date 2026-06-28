@@ -505,6 +505,22 @@ export default function App() {
     setChatInput('');
     setAiLoading(true);
 
+    // Compute the 21-point evaluation scorecard to feed context to the AI Advisor
+    const currentScore = scoreSop(draft, university, professor);
+    const scoreText = `Current Score: ${currentScore.total}/100. Breakdown: Hook=${currentScore.breakdown.hook}, Goals=${currentScore.breakdown.goals}, Fit=${currentScore.breakdown.fit}, Flow=${currentScore.breakdown.flow}, Language=${currentScore.breakdown.language}.`;
+    const issuesText = currentScore.suggestions.length > 0 
+      ? `Active warnings and improvements requested:\n${currentScore.suggestions.map((s, i) => `${i+1}. ${s}`).join('\n')}`
+      : 'All 21 criteria points passed successfully!';
+
+    const promptContext = `Student Query: "${text}"
+    
+---
+Current SOP Scorecard Context (21-Point Judgement Engine):
+- ${scoreText}
+- ${issuesText}
+
+Please guide the student directly on how to resolve these specific scorecard warnings in their draft. Keep your advice constructive, actionable, and reference their active errors.`;
+
     try {
       const res = await getAISuggestions({
         sectionId: 'chat',
@@ -512,7 +528,7 @@ export default function App() {
         text: draft,
         university,
         professor,
-        customQuery: text,
+        customQuery: promptContext,
         apiProvider: user?.isPremium ? apiProvider : 'none',
         apiKey: user?.isPremium ? apiKey : ''
       });
@@ -1112,24 +1128,24 @@ export default function App() {
               <span className="text-slate-500 text-xs">/ life</span>
             </div>
 
-            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-slate-400 font-bold uppercase">Card Number</span>
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col gap-3.5">
+              <div className="flex flex-col gap-1.5 text-left">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Card Number</span>
                 <input 
                   type="text" 
                   value="4242 4242 4242 4242" 
                   disabled
-                  className="text-xs p-2 text-slate-500 bg-slate-100 border border-slate-200 rounded"
+                  className="text-xs p-3 font-mono text-slate-500 bg-slate-100 border border-slate-200 rounded-xl outline-none"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">Expiry</span>
-                  <input type="text" value="12/28" disabled className="text-xs p-2 text-slate-500 bg-slate-100 border border-slate-200 rounded" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5 text-left">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Expiry</span>
+                  <input type="text" value="12/28" disabled className="text-xs p-3 font-mono text-slate-500 bg-slate-100 border border-slate-200 rounded-xl outline-none" />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">CVC</span>
-                  <input type="text" value="***" disabled className="text-xs p-2 text-slate-500 bg-slate-100 border border-slate-200 rounded" />
+                <div className="flex flex-col gap-1.5 text-left">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">CVC</span>
+                  <input type="text" value="***" disabled className="text-xs p-3 font-mono text-slate-500 bg-slate-100 border border-slate-200 rounded-xl outline-none" />
                 </div>
               </div>
             </div>
@@ -1137,21 +1153,25 @@ export default function App() {
             <button
               onClick={handleUpgrade}
               disabled={paymentLoading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
+              style={{ cursor: 'pointer' }}
             >
               {paymentLoading ? (
                 <>
-                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Processing Secure Payment...
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Processing Secured Payment...
                 </>
               ) : (
-                "Pay $1.99 Securely"
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                  Complete Enrollment ($1.99)
+                </>
               )}
             </button>
           </div>
         </div>
       )}
-
+      
       {/* AUTHENTICATION / SIGN UP MODAL WITH EMAIL CODE VERIFICATION */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1169,41 +1189,42 @@ export default function App() {
                 <div className="text-center flex flex-col items-center gap-2">
                   <span className="text-3xl">🔑</span>
                   <h3 className="text-base font-bold text-slate-800">Sign in to SOPIA</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed text-center">Enter your email and password or sign in with Google.</p>
+                  <p className="text-xs text-slate-500 leading-relaxed text-center font-medium">Enter your credentials or continue with Google to access your dashboard.</p>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Email Address</span>
+                  <div className="flex flex-col gap-1 text-left">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Email Address</span>
                     <input 
                       type="email" 
                       value={authEmail}
                       onChange={(e) => setAuthEmail(e.target.value)}
                       placeholder="email@example.com"
-                      className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                      className="text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:bg-white transition-all"
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Password</span>
+                  <div className="flex flex-col gap-1 text-left">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Password</span>
                     <input 
                       type="password" 
                       value={authPassword}
                       onChange={(e) => setAuthPassword(e.target.value)}
                       placeholder="••••••"
-                      className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                      className="text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:bg-white transition-all"
                     />
                   </div>
                 </div>
 
                 <button
                   onClick={handleEmailLogin}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-600/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   style={{ cursor: 'pointer' }}
                 >
-                  Sign In
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 01-3-3h7a3 3 0 013 3v1"></path></svg>
+                  Log In to My Workspace
                 </button>
 
-                <div className="text-center text-xs text-slate-400">or</div>
+                <div className="text-center text-xs text-slate-400 font-medium">or</div>
 
                 <button 
                   onClick={handleLogin}
@@ -1216,7 +1237,7 @@ export default function App() {
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.87-2.6-2.86-4.53-6.16-4.53z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
                   </svg>
-                  Sign in with Google
+                  Continue with Google
                 </button>
 
                 <p className="text-[10px] text-slate-400 text-center">
@@ -1230,26 +1251,27 @@ export default function App() {
                 <div className="text-center flex flex-col items-center gap-2">
                   <span className="text-3xl">✉️</span>
                   <h3 className="text-base font-bold text-slate-800">Verify Your Email</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed text-center">We will send a 6-digit confirmation code to verify your account.</p>
+                  <p className="text-xs text-slate-500 leading-relaxed text-center font-medium">We will generate and send a unique 6-digit confirmation key to verify your address.</p>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">Email Address</span>
+                <div className="flex flex-col gap-1 text-left">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Email Address</span>
                   <input 
                     type="email" 
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
                     placeholder="email@example.com"
-                    className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                    className="text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:bg-white transition-all"
                   />
                 </div>
 
                 <button
                   onClick={handleSendVerificationCode}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-600/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   style={{ cursor: 'pointer' }}
                 >
-                  Send Verification Code
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                  Request Verification Key
                 </button>
 
                 <p className="text-[10px] text-slate-400 text-center">
@@ -1263,27 +1285,28 @@ export default function App() {
                 <div className="text-center flex flex-col items-center gap-2">
                   <span className="text-3xl">🔑</span>
                   <h3 className="text-base font-bold text-slate-800">Enter Verification Code</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed text-center">Check your email notification alert on-screen and enter the 6-digit code below.</p>
+                  <p className="text-xs text-slate-500 leading-relaxed text-center font-medium">Check the mock on-screen notification banner and enter your 6-digit key below.</p>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">Verification Code</span>
+                <div className="flex flex-col gap-1 text-left">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Verification Key</span>
                   <input 
                     type="text" 
                     value={authVerificationInput}
                     onChange={(e) => setAuthVerificationInput(e.target.value)}
                     placeholder="123456"
                     maxLength={6}
-                    className="text-xs p-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded text-center tracking-widest font-mono text-lg"
+                    className="text-xs p-3 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl text-center tracking-widest font-mono text-lg outline-none focus:border-indigo-500 focus:bg-white transition-all"
                   />
                 </div>
 
                 <button
                   onClick={handleConfirmVerificationCode}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-600/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   style={{ cursor: 'pointer' }}
                 >
-                  Verify Code
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  Verify Key & Continue
                 </button>
               </div>
             )}
@@ -1293,38 +1316,39 @@ export default function App() {
                 <div className="text-center flex flex-col items-center gap-2">
                   <span className="text-3xl">🔒</span>
                   <h3 className="text-base font-bold text-slate-800">Set Account Password</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed text-center">Set a secure password for your verified email address.</p>
+                  <p className="text-xs text-slate-500 leading-relaxed text-center font-medium">Configure a secure password for your verified email profile.</p>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Password</span>
+                  <div className="flex flex-col gap-1 text-left">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Configure Password</span>
                     <input 
                       type="password" 
                       value={authPassword}
                       onChange={(e) => setAuthPassword(e.target.value)}
                       placeholder="••••••"
-                      className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                      className="text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:bg-white transition-all"
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Confirm Password</span>
+                  <div className="flex flex-col gap-1 text-left">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Confirm Password</span>
                     <input 
                       type="password" 
                       value={authConfirmPassword}
                       onChange={(e) => setAuthConfirmPassword(e.target.value)}
                       placeholder="••••••"
-                      className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                      className="text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:bg-white transition-all"
                     />
                   </div>
                 </div>
 
                 <button
                   onClick={handleRegisterUser}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-600/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   style={{ cursor: 'pointer' }}
                 >
-                  Create Account
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                  Create Account & Finish
                 </button>
               </div>
             )}
