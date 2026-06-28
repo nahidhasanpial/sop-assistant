@@ -526,7 +526,7 @@ export default function App() {
   // ==========================================
   if (!user) {
     return (
-      <div className="min-h-screen text-slate-300 relative overflow-hidden flex flex-col font-sans">
+      <div className="min-h-screen text-slate-300 relative overflow-hidden flex flex-col font-sans bg-[#090a10]">
         {/* Glow effect blobs */}
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none"></div>
@@ -554,14 +554,14 @@ export default function App() {
           </div>
 
           {/* INTERACTIVE PREVIEW GRAD SYSTEM SANDBOX */}
-          <div className="glass-panel p-6 max-w-4xl w-full flex flex-col gap-6 text-left shadow-2xl">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200/60 pb-4">
+          <div className="glass-panel p-6 max-w-4xl w-full flex flex-col gap-6 text-left shadow-2xl bg-white/5 border border-white/10 rounded-2xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-800">🚀 Interactive SOP Grade Sandbox</h3>
-                <p className="text-[10px] text-slate-500">Paste your paragraph below to analyze your score instantly.</p>
+                <h3 className="text-sm font-bold text-white">🚀 Interactive SOP Grade Sandbox</h3>
+                <p className="text-[10px] text-slate-400">Paste your paragraph below to analyze your score instantly.</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-slate-700">Real-Time Score:</span>
+                <span className="text-xs font-bold text-slate-300">Real-Time Score:</span>
                 <span className="px-3 py-1 bg-indigo-600 text-white rounded-full text-xs font-black">
                   {scoreSop(landingDraft).total}/100
                 </span>
@@ -573,19 +573,19 @@ export default function App() {
                 value={landingDraft}
                 onChange={(e) => setLandingDraft(e.target.value)}
                 placeholder="Paste your Statement of Purpose (SOP) draft segment here to test the real-time analyzer..."
-                className="flex-1 min-h-[160px] p-4 bg-slate-50 border border-slate-200 rounded-xl font-serif text-sm leading-relaxed text-slate-700 placeholder-slate-400 resize-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="flex-1 min-h-[160px] p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl font-serif text-sm leading-relaxed text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
 
               <div className="w-full md:w-64 flex flex-col gap-3">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Analysis Highlights</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Analysis Highlights</span>
                 <div className="flex flex-col gap-2 overflow-y-auto max-h-[160px] pr-1">
                   {scoreSop(landingDraft).suggestions.map((sug, idx) => (
-                    <div key={idx} className="p-2 bg-amber-500/10 border border-amber-500/20 text-slate-700 rounded-lg text-[10px] leading-relaxed">
+                    <div key={idx} className="p-2 bg-amber-500/10 border border-amber-500/25 text-amber-400 rounded-lg text-[10px] leading-relaxed">
                       {sug.replace('⚠️ ', '').replace('❌ ', '')}
                     </div>
                   ))}
                   {landingDraft.trim().length === 0 && (
-                    <div className="text-[10px] text-slate-400 italic">
+                    <div className="text-[10px] text-slate-500 italic">
                       Type or paste your text to see warnings and score suggestions.
                     </div>
                   )}
@@ -593,13 +593,13 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-200/60 mt-1">
-              <span className="text-[11px] text-slate-500 text-center sm:text-left leading-relaxed">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-800 mt-1">
+              <span className="text-[11px] text-slate-400 text-center sm:text-left leading-relaxed">
                 👉 <b>Sign in with Google</b> to access full checklist metrics, AI recommendations, and PDF/Word downloads.
               </span>
               <button 
                 onClick={handleLogin}
-                className="px-6 py-3 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-sm transition-all duration-200 shadow-md border border-slate-200 flex items-center gap-3 shrink-0"
+                className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-sm transition-all duration-200 shadow-md border border-slate-800 flex items-center gap-3 shrink-0"
                 style={{ cursor: 'pointer' }}
               >
                 <svg viewBox="0 0 24 24" style={{ width: '20px', height: '20px' }} xmlns="http://www.w3.org/2000/svg">
@@ -661,7 +661,7 @@ export default function App() {
 
             <button 
               onClick={handleLogin}
-              className="w-full py-3.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold transition-all duration-200 shadow-md border border-slate-200 flex items-center justify-center gap-3"
+              className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all duration-200 shadow-md border border-slate-800 flex items-center justify-center gap-3"
               style={{ cursor: 'pointer' }}
             >
               <svg viewBox="0 0 24 24" style={{ width: '20px', height: '20px' }} xmlns="http://www.w3.org/2000/svg">
