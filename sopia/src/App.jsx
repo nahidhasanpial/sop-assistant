@@ -121,7 +121,7 @@ I am confident my analytical skills make me a strong fit for Columbia Business S
 
 export default function App() {
   const isEmbedded = window.location.search.includes('embed=true');
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({ isGuest: true, isPremium: false, displayName: "Guest" });
   const [authLoading, setAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('analyze');
   
@@ -176,6 +176,15 @@ export default function App() {
     { role: 'ai', text: "Hi! I've analyzed your SOP. Your research experience and academic record are real strengths. Your two urgent fixes are the generic opening and missing university fit section. Where would you like to start?" }
   ]);
   const [chatInput, setChatInput] = useState('');
+  
+  // Custom auth & verification modal states
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState('login'); // 'login' | 'signup' | 'verify' | 'setpassword'
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
+  const [authVerificationInput, setAuthVerificationInput] = useState('');
+  const [authVerificationCode, setAuthVerificationCode] = useState('');
 
   // Generator State
   const [generatorSubTab, setGeneratorSubTab] = useState('ai'); // 'ai' | 'samples'
@@ -188,10 +197,14 @@ export default function App() {
     "My name is John. I want to study Computer Science at Stanford University. I am passionate about programming ever since I was a child. I want to study here because it is a very good university. In conclusion, I hope you accept me."
   );
 
-  // Monitor auth changes
   useEffect(() => {
     const unsub = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        loadUserSops(firebaseUser.uid);
+      } else {
+        setUser({ isGuest: true, isPremium: false, displayName: "Guest" });
+      }
       setAuthLoading(false);
       
       // Load settings
@@ -199,10 +212,6 @@ export default function App() {
       const savedProvider = localStorage.getItem('sop_assistant_apiprovider') || 'none';
       setApiKey(savedKey);
       setApiProvider(savedProvider);
-
-      if (firebaseUser) {
-        loadUserSops(firebaseUser.uid);
-      }
     });
     return () => unsub();
   }, []);
@@ -261,6 +270,7 @@ export default function App() {
   const handleLogin = async () => {
     try {
       await loginWithGoogle();
+      setShowAuthModal(false);
     } catch (err) {
       alert("Login failed: " + err.message);
     }
@@ -268,6 +278,7 @@ export default function App() {
 
   const handleLogout = async () => {
     await logout();
+    setUser({ isGuest: true, isPremium: false, displayName: "Guest" });
     setDraft('');
     setUniversity('');
     setProfessor('');
@@ -275,8 +286,9 @@ export default function App() {
   };
 
   const handleSave = async () => {
-    if (!user) {
-      alert("Please sign in first to save your drafts.");
+    if (user.isGuest) {
+      setAuthModalTab('login');
+      setShowAuthModal(true);
       return;
     }
     try {
@@ -295,6 +307,66 @@ export default function App() {
     }
   };
 
+  // Verification flow handlers
+  const handleSendVerificationCode = () => {
+    if (!authEmail.trim() || !authEmail.includes('@')) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setAuthVerificationCode(code);
+    setAuthModalTab('verify');
+    alert(`🔑 SOPIA Verification Code Sent!\n\nYour 6-digit confirmation code is: ${code}`);
+  };
+
+  const handleConfirmVerificationCode = () => {
+    if (authVerificationInput === authVerificationCode) {
+      setAuthModalTab('setpassword');
+    } else {
+      alert("❌ Invalid verification code. Please check and try again.");
+    }
+  };
+
+  const handleRegisterUser = () => {
+    if (authPassword.length < 6) {
+      alert("Password must be at least 6 characters.");
+      return;
+    }
+    if (authPassword !== authConfirmPassword) {
+      alert("Passwords do not match.");
+      return;
+    }
+    
+    // Log them in as a simulated email user
+    const mockUid = 'simulated-' + Math.random().toString(36).substr(2, 9);
+    const mockUser = {
+      uid: mockUid,
+      email: authEmail,
+      displayName: authEmail.split('@')[0],
+      isPremium: false
+    };
+    setUser(mockUser);
+    setShowAuthModal(false);
+    alert("🎉 Account created and verified successfully!");
+  };
+
+  const handleEmailLogin = () => {
+    if (!authEmail.trim() || !authPassword) {
+      alert("Please enter both email and password.");
+      return;
+    }
+    // Simulated simple login
+    const mockUid = 'simulated-' + Math.random().toString(36).substr(2, 9);
+    setUser({
+      uid: mockUid,
+      email: authEmail,
+      displayName: authEmail.split('@')[0],
+      isPremium: false
+    });
+    setShowAuthModal(false);
+    alert("Welcome back to SOPIA!");
+  };
+
   const loadSopDraft = (sop) => {
     setDraft(sop.content || '');
     setUniversity(sop.university || '');
@@ -311,14 +383,19 @@ export default function App() {
 
   // Payment simulation
   const handleUpgrade = async () => {
+    if (user.isGuest) {
+      setAuthModalTab('signup');
+      setShowAuthModal(true);
+      return;
+    }
     setPaymentLoading(true);
     // Simulate gateway delay
     setTimeout(async () => {
-      if (user) {
+      if (user && !user.isGuest) {
         await updatePremiumStatus(user.uid, true);
         setUser({ ...user, isPremium: true });
       } else {
-        localStorage.setItem('sop_assistant_premium', 'true');
+        setUser(prev => ({ ...prev, isPremium: true }));
       }
       setPaymentLoading(false);
       setShowBilling(false);
@@ -521,167 +598,7 @@ export default function App() {
     );
   }
 
-  // ==========================================
-  // LANDING PAGE (Unauthenticated)
-  // ==========================================
-  if (!user) {
-    return (
-      <div className="min-h-screen text-slate-300 relative overflow-hidden flex flex-col font-sans bg-[#090a10]">
-        {/* Glow effect blobs */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-        {/* Header */}
-        <header className="max-w-7xl mx-auto w-full px-6 py-6 flex justify-between items-center z-10">
-          <div className="flex items-center gap-3">
-            <img src={logo} className="w-8 h-8 object-contain rounded-lg" alt="SOPIA logo" />
-            <span className="text-lg font-bold tracking-tight text-white">SOPIA</span>
-          </div>
-        </header>
-
-        {/* Hero Section */}
-        <main className="max-w-7xl mx-auto w-full px-6 flex-1 flex flex-col justify-center items-center text-center py-16 z-10 gap-12">
-          <div className="flex flex-col gap-4 max-w-4xl">
-            <div className="inline-flex self-center px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-semibold text-indigo-400 animate-pulse-subtle">
-              ✨ 2026 Grad Admissions Edition
-            </div>
-            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white leading-tight">
-              Write a Perfect Statement of Purpose with <span className="text-gradient-primary">AI Guidance</span>
-            </h1>
-            <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed mt-2">
-              Ensure your SOP follows the ideal 11-step structure. Get real-time grading, University Fit checking, AI cliché highlights, and professional guidelines.
-            </p>
-          </div>
-
-          {/* INTERACTIVE PREVIEW GRAD SYSTEM SANDBOX */}
-          <div className="glass-panel p-6 max-w-4xl w-full flex flex-col gap-6 text-left shadow-2xl bg-white/5 border border-white/10 rounded-2xl">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <h3 className="text-sm font-bold text-white">🚀 Interactive SOP Grade Sandbox</h3>
-                <p className="text-[10px] text-slate-400">Paste your paragraph below to analyze your score instantly.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-slate-300">Real-Time Score:</span>
-                <span className="px-3 py-1 bg-indigo-600 text-white rounded-full text-xs font-black">
-                  {scoreSop(landingDraft).total}/100
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-5">
-              <textarea
-                value={landingDraft}
-                onChange={(e) => setLandingDraft(e.target.value)}
-                placeholder="Paste your Statement of Purpose (SOP) draft segment here to test the real-time analyzer..."
-                className="flex-1 min-h-[160px] p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl font-serif text-sm leading-relaxed text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-              />
-
-              <div className="w-full md:w-64 flex flex-col gap-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Analysis Highlights</span>
-                <div className="flex flex-col gap-2 overflow-y-auto max-h-[160px] pr-1">
-                  {scoreSop(landingDraft).suggestions.map((sug, idx) => (
-                    <div key={idx} className="p-2 bg-amber-500/10 border border-amber-500/25 text-amber-400 rounded-lg text-[10px] leading-relaxed">
-                      {sug.replace('⚠️ ', '').replace('❌ ', '')}
-                    </div>
-                  ))}
-                  {landingDraft.trim().length === 0 && (
-                    <div className="text-[10px] text-slate-500 italic">
-                      Type or paste your text to see warnings and score suggestions.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-800 mt-1">
-              <span className="text-[11px] text-slate-400 text-center sm:text-left leading-relaxed">
-                👉 <b>Sign in with Google</b> to access full checklist metrics, AI recommendations, and PDF/Word downloads.
-              </span>
-              <button 
-                onClick={handleLogin}
-                className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-sm transition-all duration-200 shadow-md border border-slate-800 flex items-center gap-3 shrink-0"
-                style={{ cursor: 'pointer' }}
-              >
-                <svg viewBox="0 0 24 24" style={{ width: '20px', height: '20px' }} xmlns="http://www.w3.org/2000/svg">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.87-2.6-2.86-4.53-6.16-4.53z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
-                </svg>
-                Sign in with Google
-              </button>
-            </div>
-          </div>
-
-          {/* Call to Action Grid (All Services) */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl w-full my-6">
-            <div className="glass-card p-6 flex flex-col items-center gap-3 text-center">
-              <span className="text-2xl">📋</span>
-              <h3 className="font-semibold text-white">11-Step Structure</h3>
-              <p className="text-xs text-slate-400">Step-by-step checklists with English instructions and automated templates.</p>
-            </div>
-            <div className="glass-card p-6 flex flex-col items-center gap-3 text-center">
-              <span className="text-2xl">📈</span>
-              <h3 className="font-semibold text-white">Real-Time Grading</h3>
-              <p className="text-xs text-slate-400">Instantly score your SOP out of 100 on Hook, Goals, Fit, Flow, and Language.</p>
-            </div>
-            <div className="glass-card p-6 flex flex-col items-center gap-3 text-center">
-              <span className="text-2xl">🕵️</span>
-              <h3 className="font-semibold text-white">AI cliché Highlights</h3>
-              <p className="text-xs text-slate-400">Flag sentences containing LLM cliches (like 'delve' or 'tapestry') and weak hooks.</p>
-            </div>
-            <div className="glass-card p-6 flex flex-col items-center gap-3 text-center">
-              <span className="text-2xl">🔌</span>
-              <h3 className="font-semibold text-white">Chrome Integration</h3>
-              <p className="text-xs text-slate-400">Works directly inside Google Docs and CommonApp via companion sidebar.</p>
-            </div>
-          </div>
-
-          {/* Pricing Box (Premium Package Offer) */}
-          <div className="glass-panel p-8 max-w-xl w-full border-indigo-500/20 relative">
-            <div className="absolute top-0 right-10 transform -translate-y-1/2 px-3 py-1 bg-gradient-indigo-purple text-white text-[10px] font-bold tracking-wider rounded-full uppercase">
-              Best Deal
-            </div>
-            
-            <h2 className="text-xl font-bold text-white mb-2">Student Pro License</h2>
-            <p className="text-slate-400 text-xs mb-6">One-time payment. No subscription traps.</p>
-            
-            <div className="flex justify-center items-baseline gap-2 mb-6">
-              <span className="text-5xl font-extrabold text-white">$1.99</span>
-              <span className="text-slate-400 text-sm">/ life</span>
-            </div>
-
-            <ul className="text-left text-xs flex flex-col gap-3 text-slate-300 mb-8 max-w-xs mx-auto">
-              <li className="flex items-center gap-2">🟢 Unlimited AI Suggestions (Gemini/Claude)</li>
-              <li className="flex items-center gap-2">🟢 University & Professor Fit Analyzer</li>
-              <li className="flex items-center gap-2">🟢 Clean PDF & Word (.docx) Reports</li>
-              <li className="flex items-center gap-2">🟢 Premium Template Library (CS, Bio, MBA, etc.)</li>
-              <li className="flex items-center gap-2">🟢 Auto-save Drafts to Cloud Database</li>
-            </ul>
-
-            <button 
-              onClick={handleLogin}
-              className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all duration-200 shadow-md border border-slate-800 flex items-center justify-center gap-3"
-              style={{ cursor: 'pointer' }}
-            >
-              <svg viewBox="0 0 24 24" style={{ width: '20px', height: '20px' }} xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.87-2.6-2.86-4.53-6.16-4.53z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
-              </svg>
-              Sign in with Google
-            </button>
-            <p className="text-[10px] text-slate-500 mt-3">Gmail authorization. No passwords or email verification codes needed.</p>
-          </div>
-        </main>
-        {/* Footer */}
-        <footer className="py-8 text-center text-xs text-slate-600 border-t border-slate-900/60 mt-8">
-          SOPIA © 2026. Made with care for future scholars.
-        </footer>
-      </div>
-    );
-  }
 
   // ==========================================
   // SOP ASSISTANT DASHBOARD (Authenticated)
@@ -1226,6 +1143,187 @@ export default function App() {
                 "Pay $1.99 Securely"
               )}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* AUTHENTICATION / SIGN UP MODAL WITH EMAIL CODE VERIFICATION */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-panel p-6 max-w-sm w-full flex flex-col gap-5 border-indigo-500/20 text-slate-800 bg-white relative rounded-2xl shadow-xl">
+            <button 
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 border-none bg-transparent"
+              style={{ padding: 0, cursor: 'pointer' }}
+            >
+              ✕
+            </button>
+
+            {authModalTab === 'login' && (
+              <div className="flex flex-col gap-4">
+                <div className="text-center flex flex-col items-center gap-2">
+                  <span className="text-3xl">🔑</span>
+                  <h3 className="text-base font-bold text-slate-800">Sign in to SOPIA</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed text-center">Enter your email and password or sign in with Google.</p>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Email Address</span>
+                    <input 
+                      type="email" 
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Password</span>
+                    <input 
+                      type="password" 
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder="••••••"
+                      className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleEmailLogin}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors"
+                  style={{ cursor: 'pointer' }}
+                >
+                  Sign In
+                </button>
+
+                <div className="text-center text-xs text-slate-400">or</div>
+
+                <button 
+                  onClick={handleLogin}
+                  className="w-full py-3 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-xs transition-all duration-200 shadow-sm border border-slate-200 flex items-center justify-center gap-2"
+                  style={{ cursor: 'pointer' }}
+                >
+                  <svg viewBox="0 0 24 24" style={{ width: '16px', height: '16px' }} xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.87-2.6-2.86-4.53-6.16-4.53z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                  </svg>
+                  Sign in with Google
+                </button>
+
+                <p className="text-[10px] text-slate-400 text-center">
+                  Don't have an account? <span onClick={() => setAuthModalTab('signup')} className="text-indigo-600 font-bold cursor-pointer hover:underline">Sign up with code</span>
+                </p>
+              </div>
+            )}
+
+            {authModalTab === 'signup' && (
+              <div className="flex flex-col gap-4">
+                <div className="text-center flex flex-col items-center gap-2">
+                  <span className="text-3xl">✉️</span>
+                  <h3 className="text-base font-bold text-slate-800">Verify Your Email</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed text-center">We will send a 6-digit confirmation code to verify your account.</p>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">Email Address</span>
+                  <input 
+                    type="email" 
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                  />
+                </div>
+
+                <button
+                  onClick={handleSendVerificationCode}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors"
+                  style={{ cursor: 'pointer' }}
+                >
+                  Send Verification Code
+                </button>
+
+                <p className="text-[10px] text-slate-400 text-center">
+                  Already have an account? <span onClick={() => setAuthModalTab('login')} className="text-indigo-600 font-bold cursor-pointer hover:underline">Log in</span>
+                </p>
+              </div>
+            )}
+
+            {authModalTab === 'verify' && (
+              <div className="flex flex-col gap-4">
+                <div className="text-center flex flex-col items-center gap-2">
+                  <span className="text-3xl">🔑</span>
+                  <h3 className="text-base font-bold text-slate-800">Enter Verification Code</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed text-center">Check your email notification alert on-screen and enter the 6-digit code below.</p>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">Verification Code</span>
+                  <input 
+                    type="text" 
+                    value={authVerificationInput}
+                    onChange={(e) => setAuthVerificationInput(e.target.value)}
+                    placeholder="123456"
+                    maxLength={6}
+                    className="text-xs p-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded text-center tracking-widest font-mono text-lg"
+                  />
+                </div>
+
+                <button
+                  onClick={handleConfirmVerificationCode}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors"
+                  style={{ cursor: 'pointer' }}
+                >
+                  Verify Code
+                </button>
+              </div>
+            )}
+
+            {authModalTab === 'setpassword' && (
+              <div className="flex flex-col gap-4">
+                <div className="text-center flex flex-col items-center gap-2">
+                  <span className="text-3xl">🔒</span>
+                  <h3 className="text-base font-bold text-slate-800">Set Account Password</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed text-center">Set a secure password for your verified email address.</p>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Password</span>
+                    <input 
+                      type="password" 
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder="••••••"
+                      className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Confirm Password</span>
+                    <input 
+                      type="password" 
+                      value={authConfirmPassword}
+                      onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                      placeholder="••••••"
+                      className="text-xs p-2.5 bg-slate-50 border border-slate-200 rounded"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleRegisterUser}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors"
+                  style={{ cursor: 'pointer' }}
+                >
+                  Create Account
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       )}
